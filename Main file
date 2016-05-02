@@ -1,0 +1,362 @@
+# STAT-4714-Team-3-code
+
+
+# two-gamma input code
+# ---------------------------------------------------------------------------------------------------------------------------------
+# Maximum likelihood estimation for finite mixture of gamma distributions
+# Stat 4714 - Final Project
+# Daniel Gil
+# 4/27/2016
+
+# constant
+e <- exp(1)
+
+# user predefined values that we will be estimating
+w_actual <- .6
+a1_actual <- 2.5
+b1_actual <- 0.5
+a2_actual <- 1.0
+b2_actual <- 1.0
+
+# number of points to generate from the distribution
+N <- 100
+
+# number of iterations to run
+iterations <- 100
+
+# density function f1 generates w*N of the points
+f1_N <- as.integer(w_actual * N)
+# density function f2 generates (1-w)*N of the points
+f2_N <- as.integer((1-w_actual) * N)
+
+# stores the different estimates
+w_est = vector(mode="numeric", length=0)
+a1_est = vector(mode="numeric", length=0)
+b1_est = vector(mode="numeric", length=0)
+a2_est = vector(mode="numeric", length=0)
+b2_est = vector(mode="numeric", length=0)
+
+for (i in 1:iterations) {
+	# generate the values from each gamma distribution
+	f1_x <- rgamma(f1_N, shape=a1_actual, scale=b1_actual)
+	f2_x <- rgamma(f2_N, shape=a2_actual, scale=b2_actual)
+
+	# merge the values into one vector. stores all of 
+	# the values generated from the mixed distribution
+	x <- c(f1_x, f2_x)
+	
+	# we use L-BFGS-B method so we can apply box constraints
+	result <- optim(par=c(0.75,1,1,1,1), fn=likelihood, method="L-BFGS-B", lower=c(0.5,0,0,0,0), upper=c(1,Inf,Inf,Inf,Inf))
+
+	w_est[i] <- result$par[1]
+	a1_est[i] <- result$par[2]
+	b1_est[i] <- result$par[3]
+	a2_est[i] <- result$par[4]
+	b2_est[i] <- result$par[5]
+}
+
+print("w_est mean")
+print(mean(w_est))
+print("a1_est mean")
+print(mean(a1_est))
+print("b1_est mean")
+print(mean(b1_est))
+print("a2_est mean")
+print(mean(a2_est))
+print("b2_est mean")
+print(mean(b2_est))
+print("num elements:")
+print(length(w_est))
+
+# likelihood function, product of the density over all data values
+#
+# params 	-- vector that stores omega and the gamma estimates
+likelihood <- function(params) {
+	# pull the parameters out of the vector
+	w <- params[1]
+	a1 <- params[2]
+	b1 <- params[3]
+	a2 <- params[4]
+	b2 <- params[5]
+	
+	log_L <- 0
+	
+	# computes the sum of the log of the densities, the log likelihood
+	for (i in 1:length(x)) {
+		term1 = w * (x[i] ^ (a1 - 1)) * (e ^ (-x[i] / b1)) / (gamma(a1) * (b1 ^ a1))
+		term2 = (1-w) * (x[i] ^ (a2 - 1)) * (e ^ (-x[i] / b2)) / (gamma(a2) * (b2 ^ a2))
+
+		term = log(term1 + term2)
+		log_L <- log_L + term
+	}
+
+	# by default, optim minimizes functions, so we give it the 
+	# negative log likelihood, so we can maximize the function
+	if (is.finite(-log_L)) {
+		return (-log_L)
+	} else {
+		return (0)
+	}
+}
+
+
+# non-gamma input code
+# -----------------------------------------------------------------------------------------------------------------------------
+# Maximum likelihood estimation for finite mixture of gamma distributions, edit for non-gamma input
+# Stat 4714 - Final Project
+# Base code: Daniel Gil
+# Non-gamma modifications: Elizabeth Tuomey
+# 4/30/2016
+
+# likelihood function, product of the density over all data values
+#
+# params 	-- vector that stores omega and the gamma estimates
+likelihood <- function(params) {
+	# pull the parameters out of the vector
+	w <- params[1]
+	a1 <- params[2]
+	b1 <- params[3]
+	a2 <- params[4]
+	b2 <- params[5]
+	
+	log_L <- 0
+	
+	# computes the sum of the log of the densities, the log likelihood
+	for (i in 1:length(x)) {
+		term1 = w * (x[i] ^ (a1 - 1)) * (e ^ (-x[i] / b1)) / (gamma(a1) * (b1 ^ a1))
+		term2 = (1-w) * (x[i] ^ (a2 - 1)) * (e ^ (-x[i] / b2)) / (gamma(a2) * (b2 ^ a2))
+
+		term = log(term1 + term2)
+		log_L <- log_L + term
+	}
+
+	# by default, optim minimizes functions, so we give it the 
+	# negative log likelihood, so we can maximize the function
+	if (is.finite(-log_L)) {
+		return (-log_L)
+	} else {
+		return (0)
+	}
+}
+
+# constant
+e <- exp(1)
+
+# starting parameters for each distribution:
+# normal
+mnorminit = 0
+sdnorminit = 1
+# uniform
+minunif = 0
+maxunifinit = 1
+# exponential
+rateexpinit = .1
+# weibull
+shapeweibinit = 1
+scaleweibinit = 1
+# beta
+shape1betainit = .5
+shape2betainit = .5
+# gamma
+alphagammainit = .5
+betagammainit = .5
+
+# number of points to generate from the distribution
+N = 100
+
+# number of iterations to generate the mean estimates
+# WARNING: may take a long time to process for high numbers
+iterations = 10
+
+# number of different parameters tested
+# WARNING: may take a long time to process for high numbers
+numparamtest = 50
+
+# stores the different estimates
+w_est = vector(mode="numeric", length=iterations)
+a1_est = vector(mode="numeric", length=iterations)
+b1_est = vector(mode="numeric", length=iterations)
+a2_est = vector(mode="numeric", length=iterations)
+b2_est = vector(mode="numeric", length=iterations)
+
+# stores the means of the estimates of each test parameter
+w_estmean = vector(mode = "numeric", length = numparamtest)
+a1_estmean = vector(mode = "numeric", length = numparamtest)
+b1_estmean = vector(mode = "numeric", length = numparamtest)
+a2_estmean = vector(mode = "numeric", length = numparamtest)
+b2_estmean = vector(mode = "numeric", length = numparamtest)
+
+# initialize parameters used in testing
+mnorm = mnorminit
+sdnorm = sdnorminit
+maxunif = maxunifinit
+rateexp = rateexpinit
+shapeweib = shapeweibinit
+scaleweib = scaleweibinit
+shape1beta = shape1betainit
+shape2beta = shape2betainit
+alphagamma = alphagammainit
+betagamma = betagammainit
+
+for (count in 1:numparamtest){
+	# generate the parameters to be used when generating each set of data, un-comment the parameter to test
+	# normal:
+		# mnorm = mnorm + (10/numparamtest)*(count - 1)
+		# sdnorm = sdnorm + (10/numparamtest)*(count - 1)
+	# uniform:
+		# maxunif = maxunif + (50/numparamtest)*(count - 1)
+	# exponential:
+		# rateexp = rateexp + (10/numparamtest)*(count - 1)
+	# weibull:
+		# shapeweib = shapeweib + (10/numparamtest)*(count - 1)
+		# scaleweib = scaleweib + (10/numparamtest)*(count - 1)
+	# beta:
+		# shape1beta = shape1beta + (20/numparamtest)*(count - 1)
+		# shape2beta = shape2beta + (20/numparamtest)*(count - 1)
+	# gamma
+		# alphagamma = alphagamma + (5/numparamtest)*(count - 1)
+		# betagamma = betagamma + (5/numparamtest)*(count - 1)
+
+for (i in 1:iterations) {
+	# generate the values from each distribution, un-comment the distribution to test
+	# normal: 
+		# f1_x <- rnorm(N, mean = mnorm, sd = sdnorm)
+	# uniform: 
+		# f1_x <- runif(N, min = minunif, max = maxunif)
+	# exponential: 
+		# f1_x <- rexp(N, rate = rateexp)
+	# weibull: 
+		# f1_x <- rweibull(N, shape = shapeweib, scale = scaleweib)
+	# beta:
+		# f1_x <- rbeta(N, shape1 = shape1beta, shape2 = shape2beta)
+	# gamma:
+		# f1_x <- rgamma(N, shape = alphagamma, scale = betagamma)
+	
+	# merge the values into one vector. stores all of 
+	# the values generated from the mixed distribution
+	x <- c(f1_x)
+	
+	# we use L-BFGS-B method so we can apply box constraints
+	result <- optim(par=c(0.75,1,1,1,1), fn=likelihood, method="L-BFGS-B", lower=c(0.5,0,0,0,0), upper=c(1,Inf,Inf,Inf,Inf))
+
+	w_est[i] = result$par[1]
+	a1_est[i] = result$par[2]
+	b1_est[i] = result$par[3]
+	a2_est[i] = result$par[4]
+	b2_est[i] = result$par[5]
+	
+}
+
+w_estmean[count] = mean(w_est)
+a1_estmean[count] = mean(a1_est)
+b1_estmean[count] = mean(b1_est)
+a2_estmean[count] = mean(a2_est)
+b2_estmean[count] = mean(b2_est)
+}
+
+# plotting functions:
+
+# vector used in plotting
+y = vector(mode = "numeric", length = numparamtest)
+
+# set the scale rate and initial value for the y axis, un-comment the parameter to test
+	# normal, mean:
+		# rate = 10/numparamtest
+		# init = mnorminit
+	# normal, standard deviation:	
+		# rate = 10/numparamtest
+		# init = sdnorminit
+	# uniform:
+		# rate = 50/numparamtest
+		# init = maxunifinit
+	# exponential:
+		# rate = 10/numparamtest
+		# init = rateexpinit
+	# weibull, shape:
+		# rate = 10/numparamtest
+		# init = shapeweibinit
+	# weibull, scale:
+		# rate = 10/numparamtest
+		# init = scaleweibinit
+	# beta, shape1
+		# rate = 20/numparamtest
+		# init = shape1betainit
+	# beta, shape 2
+		# rate = 20/numparamtest
+		# init = shape2betainit
+	# gamma
+		# rate = 5/numparamtest
+		# init = alphagammainit
+		
+for (i in 1:numparamtest) {	
+	y[i] = init + rate*(i-1)
+}
+
+# normal:
+	# mean v estimates
+		# plot(y, w_estmean, main = "w estimate v. mean for a Normal Distribution", ylab = "w estimate", xlab = "mean")
+		# plot(y, a1_estmean, main = "Alpha 1 estimate v. mean for a Normal Distribution", ylab = "Alpha 1 Estimate", xlab = "mean")
+		# plot(y, b1_estmean, main = "Beta 1 estimate v. mean for a Normal Distribution", ylab = "Beta 1 Estimate", xlab = "mean")
+		# plot(y, a2_estmean, main = "Alpha 2 estimate v. mean for a Normal Distribution", ylab = "Alpha 2 Estimate", xlab = "mean")
+		# plot(y, b2_estmean, main = "Beta 2 estimate v. mean for a Normal Distribution", ylab = "Beta 2 Estimate", xlab = "mean")
+		
+	# Standard deviation v estimates
+		# plot(y, w_estmean, main = "w estimate v. Standard deviation for a Normal Distribution", ylab = "w estimate", xlab = "Standard deviation")
+		# plot(y, a1_estmean, main = "Alpha 1 estimate v. Standard deviation for a Normal Distribution", ylab = "Alpha 1 Estimate", xlab = "Standard deviation")
+		# plot(y, b1_estmean, main = "Beta 1 estimate v. Standard deviation for a Normal Distribution", ylab = "Beta 1 Estimate", xlab = "Standard deviation")
+		# plot(y, a2_estmean, main = "Alpha 2 estimate v. Standard deviation for a Normal Distribution", ylab = "Alpha 2 Estimate", xlab = "Standard deviation")
+		# plot(y, b2_estmean, main = "Beta 2 estimate v. Standard deviation for a Normal Distribution", ylab = "Beta 2 Estimate", xlab = "Standard deviation")
+	
+# uniform:
+	# max v estimates 
+		# plot(y, w_estmean, main = "w estimate v. maximum for a Uniform Distribution", ylab = "w estimate", xlab = "maximum")
+		# plot(y, a1_estmean, main = "Alpha 1 estimate v. maximum for a Uniform Distribution", ylab = "Alpha 1 Estimate", xlab = "maximum")
+		# plot(y, b1_estmean, main = "Beta 1 estimate v. maximum for a Uniform Distribution", ylab = "Beta 1 Estimate", xlab = "maximum")
+		# plot(y, a2_estmean, main = "Alpha 2 estimate v. maximum for a Uniform Distribution", ylab = "Alpha 2 Estimate", xlab = "maximum")
+		# plot(y, b2_estmean, main = "Beta 2 estimate v. maximum for a Uniform Distribution", ylab = "Beta 2 Estimate", xlab = "maximum")
+	
+# exponential:
+	# rate v estimates
+		# plot(y, w_estmean, main = "w estimate v. rate for an Exponential Distribution", ylab = "w estimate", xlab = "rate")
+		# plot(y, a1_estmean, main = "Alpha 1 estimate v. rate for an Exponential Distribution", ylab = "Alpha 1 Estimate", xlab = "rate")
+		# plot(y, b1_estmean, main = "Beta 1 estimate v. rate for an Exponential Distribution", ylab = "Beta 1 Estimate", xlab = "rate")
+		# plot(y, a2_estmean, main = "Alpha 2 estimate v. rate for an Exponential Distribution", ylab = "Alpha 2 Estimate", xlab = "rate")
+		# plot(y, b2_estmean, main = "Beta 2 estimate v. rate for an Exponential Distribution", ylab = "Beta 2 Estimate", xlab = "rate")
+	
+# weibull:
+	# shape v estimates
+		# plot(y, w_estmean, main = "w estimate v. shape for a Weibull Distribution", ylab = "w estimate", xlab = "shape")
+		# plot(y, a1_estmean, main = "Alpha 1 estimate v. shape for a Weibull Distribution", ylab = "Alpha 1 Estimate", xlab = "shape")
+		# plot(y, b1_estmean, main = "Beta 1 estimate v. shape for a Weibull Distribution", ylab = "Beta 1 Estimate", xlab = "shape")
+		# plot(y, a2_estmean, main = "Alpha 2 estimate v. shape for a Weibull Distribution", ylab = "Alpha 2 Estimate", xlab = "shape")
+		# plot(y, b2_estmean, main = "Beta 2 estimate v. shape for a Weibull Distribution", ylab = "Beta 2 Estimate", xlab = "shape")
+	
+	# scale v estimates
+		# plot(y, w_estmean, main = "w estimate v. scale for a Weibull Distribution", ylab = "w estimate", xlab = "scale")
+		# plot(y, a1_estmean, main = "Alpha 1 estimate v. scale for a Weibull Distribution", ylab = "Alpha 1 Estimate", xlab = "scale")
+		# plot(y, b1_estmean, main = "Beta 1 estimate v. scale for a Weibull Distribution", ylab = "Beta 1 Estimate", xlab = "scale")
+		# plot(y, a2_estmean, main = "Alpha 2 estimate v. scale for a Weibull Distribution", ylab = "Alpha 2 Estimate", xlab = "scale")
+		# plot(y, b2_estmean, main = "Beta 2 estimate v. scale for a Weibull Distribution", ylab = "Beta 2 Estimate", xlab = "scale")
+
+# beta:
+	# shape 1 v estimates
+		# plot(y, w_estmean, main = "w estimate v. shape 1 for Beta Distribution", ylab = "w estimate", xlab = "shape 1")
+		# plot(y, a1_estmean, main = "Alpha 1 estimate v. shape 1 for Beta Distribution", ylab = "Alpha 1 Estimate", xlab = "shape 1")
+		# plot(y, b1_estmean, main = "Beta 1 estimate v. shape 1 for Beta Distribution", ylab = "Beta 1 Estimate", xlab = "shape 1")
+		# plot(y, a2_estmean, main = "Alpha 2 estimate v. shape 1 for Beta Distribution", ylab = "Alpha 2 Estimate", xlab = "shape 1")
+		# plot(y, b2_estmean, main = "Beta 2 estimate v. shape 1 for Beta Distribution", ylab = "Beta 2 Estimate", xlab = "shape 1")
+	 
+	# shape 2 v estimates
+		# plot(y, w_estmean, main = "w estimate v. shape 2 for Beta Distribution", ylab = "w estimate", xlab = "shape 2")
+		# plot(y, a1_estmean, main = "Alpha 1 estimate v. shape 2 for Beta Distribution", ylab = "Alpha 1 Estimate", xlab = "shape 2")
+		# plot(y, b1_estmean, main = "Beta 1 estimate v. shape 2 for Beta Distribution", ylab = "Beta 1 Estimate", xlab = "shape 2")
+		# plot(y, a2_estmean, main = "Alpha 2 estimate v. shape 2 for Beta Distribution", ylab = "Alpha 2 Estimate", xlab = "shape 2")
+		# plot(y, b2_estmean, main = "Beta 2 estimate v. shape 2 for Beta Distribution", ylab = "Beta 2 Estimate", xlab = "shape 2")
+		
+# gamma
+	# alpha and beta v estimates
+		# plot(y, w_estmean, main = "w estimate v. alpha and beta for a Gamma Distribution", ylab = "w estimate", xlab = "alpha and beta")
+		# plot(y, a1_estmean, main = "Alpha 1 estimate v. alpha and beta for a Gamma Distribution", ylab = "Alpha 1 Estimate", xlab = "alpha and beta")
+		# plot(y, b1_estmean, main = "Beta 1 estimate v. alpha and beta for a Gamma Distribution", ylab = "Beta 1 Estimate", xlab = "alpha and beta")
+		# plot(y, a2_estmean, main = "Alpha 2 estimate v. alpha and beta for a Gamma Distribution", ylab = "Alpha 2 Estimate", xlab = "alpha and beta")
+		# plot(y, b2_estmean, main = "Beta 2 estimate v. alpha and beta for a Gamma Distribution", ylab = "Beta 2 Estimate", xlab = "alpha and beta")
